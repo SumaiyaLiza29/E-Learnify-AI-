@@ -1,0 +1,41 @@
+# ===============================
+# Node / NPM
+# ===============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===============================
+# Environment variables (SECURITY)
+# ===============================
+.env
+backend/.env
+frontend/.env
+
+# ===============================
+# Frontend build outputs
+# ===============================
+frontend/dist
+frontend/build
+
+# ===============================
+# Backend logs / temp
+# ===============================
+logs/
+*.log
+
+# ===============================
+# OS / Editor files
+# ===============================
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# ===============================
+# Optional: cache / temp
+# ===============================
+.cache/
+.tmp/
