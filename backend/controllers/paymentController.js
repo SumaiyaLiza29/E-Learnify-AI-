@@ -1,308 +1,406 @@
-// controllers/paymentController.js
-const { getDB } = require('../config/db');
-const { ObjectId } = require('mongodb');
-const SSLCommerzPayment = require('sslcommerz-lts');
+// backend/controllers/paymentController.js
 
-// Initialize SSLCommerz
-const store_id = process.env.SSLCOMMERZ_STORE_ID;
-const store_passwd = process.env.SSLCOMMERZ_STORE_PASSWORD;
-const is_live = process.env.SSLCOMMERZ_IS_LIVE === 'true';
+const SSLCommerzPayment = require("sslcommerz-lts");
+const PDFDocument = require("pdfkit");
+const { ObjectId } = require("mongodb");
+const { getDb } = require("../config/db");
 
-console.log('SSLCommerz Config:', { store_id, store_passwd, is_live });
+const store_id = process.env.SSLCOMMERZ_STORE_ID || "test";
+const store_passwd = process.env.SSLCOMMERZ_STORE_PASSWORD || "test";
+const is_live = false;
 
-const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-
-// Initiate payment
+/* =========================
+   INITIATE PAYMENT
+========================= */
 exports.initiatePayment = async (req, res) => {
   try {
     const { enrollmentId } = req.body;
-    const userId = req.user.userId;
-    
-    console.log('Initiating payment for:', { enrollmentId, userId });
-    
-    const db = getDB();
-    const enrollmentsCollection = db.collection('enrollments');
-    
-    // Get enrollment details
-    const enrollment = await enrollmentsCollection.findOne({
+    const userId = req.user.id;
+
+    const db = getDb();
+    const enrollments = db.collection("enrollments");
+    const courses = db.collection("courses");
+    const users = db.collection("users");
+
+    const enrollment = await enrollments.findOne({
       _id: new ObjectId(enrollmentId),
-      studentId: new ObjectId(userId)
     });
-    
-    if (!enrollment) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Enrollment not found' 
-      });
-    }
-    
-    if (enrollment.paymentStatus === 'completed') {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Payment already completed' 
-      });
-    }
-    
-    // Generate unique transaction ID
-    const tran_id = 'EL' + Date.now() + Math.floor(Math.random() * 1000);
-    
-    // Base URL - use your actual backend URL
-    const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    
-    // Payment data for SSLCommerz
-    const data = {
-      total_amount: enrollment.coursePrice || 100, // Default to 100 if not set
-      currency: 'BDT',
-      tran_id: tran_id,
-      success_url: `${baseUrl}/api/payments/success`,
-      fail_url: `${baseUrl}/api/payments/fail`,
-      cancel_url: `${baseUrl}/api/payments/cancel`,
-      ipn_url: `${baseUrl}/api/payments/ipn`,
-      product_name: enrollment.courseTitle || 'Course Enrollment',
-      product_category: 'Education',
-      product_profile: 'non-physical-goods',
-      cus_name: enrollment.studentName || 'Customer',
-      cus_email: enrollment.studentEmail || 'customer@example.com',
-      cus_phone: '01700000000',
-      cus_add1: 'Dhaka',
-      cus_city: 'Dhaka',
-      cus_country: 'Bangladesh',
-      shipping_method: 'NO',
-      multi_card_name: 'mastercard,visacard,amexcard', // Accept multiple cards
-      value_a: enrollmentId.toString(),
-      value_b: userId.toString(),
-      value_c: enrollment.courseId.toString()
+    if (!enrollment) return res.status(404).json({ message: "Enrollment not found" });
+    if (enrollment.userId.toString() !== userId)
+      return res.status(403).json({ message: "Unauthorized" });
+
+    const course = await courses.findOne({
+      _id: new ObjectId(enrollment.courseId),
+    });
+    const user = await users.findOne({
+      _id: new ObjectId(enrollment.userId),
+    });
+
+    const amount = course?.price || 100;
+    const tran_id = `TXN_${Date.now()}_${enrollmentId}`;
+
+    const paymentData = {
+      total_amount: amount,
+      currency: "BDT",
+      tran_id,
+      success_url: `${process.env.BACKEND_URL}/api/payments/success?enrollmentId=${enrollmentId}`,
+      fail_url: `${process.env.BACKEND_URL}/api/payments/fail?enrollmentId=${enrollmentId}`,
+      cancel_url: `${process.env.BACKEND_URL}/api/payments/cancel?enrollmentId=${enrollmentId}`,
+      ipn_url: `${process.env.BACKEND_URL}/api/payments/ipn`,
+      shipping_method: "No",
+      product_name: course?.title || "Online Course",
+      product_category: "Education",
+      product_profile: "general",
+      cus_name: user?.name || "Student",
+      cus_email: user?.email || "student@example.com",
+      cus_city: "Dhaka",
+      cus_country: "Bangladesh",
+      cus_phone: "01700000000",
     };
-    
-    console.log('SSLCommerz payment data:', data);
-    
-    // Save transaction info
-    await enrollmentsCollection.updateOne(
+
+    const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+    const apiResponse = await sslcz.init(paymentData);
+
+    await enrollments.updateOne(
       { _id: new ObjectId(enrollmentId) },
-      { 
-        $set: { 
-          transactionId: tran_id,
-          paymentStatus: 'pending',
-          updatedAt: new Date()
-        } 
+      {
+        $set: {
+          paymentId: tran_id,
+          paymentGateway: "SSLCommerz",
+          amount,
+        },
       }
     );
-    
-    // Initialize payment
-    const apiResponse = await sslcz.init(data);
-    console.log('SSLCommerz API Response:', apiResponse);
-    
-    if (apiResponse.status === 'SUCCESS') {
-      res.json({
-        success: true,
-        message: 'Payment initiated',
-        paymentUrl: apiResponse.GatewayPageURL,
-        transactionId: tran_id
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        message: 'Payment initiation failed',
-        error: apiResponse.failedreason || 'Unknown error'
-      });
-    }
-    
-  } catch (error) {
-    console.error('Payment initiation error:', error);
-    res.status(500).json({ 
-      success: false,
-      message: 'Server error', 
-      error: error.message 
-    });
+
+    res.json({ paymentUrl: apiResponse.GatewayPageURL });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// Payment success callback (SSLCommerz redirects here)
+/* =========================
+   PAYMENT CALLBACKS
+========================= */
 exports.paymentSuccess = async (req, res) => {
   try {
-    console.log('Payment success callback called');
-    console.log('Request body:', req.body);
-    console.log('Request query:', req.query);
-    
-    // SSLCommerz sends data via POST, but also might redirect with GET
-    const data = req.method === 'POST' ? req.body : req.query;
-    const { tran_id, val_id, value_a } = data; // value_a = enrollmentId
-    
-    console.log('Payment success data:', { tran_id, val_id, value_a });
-    
-    if (!value_a) {
-      console.error('No enrollment ID in callback');
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?error=no_enrollment_id`);
+    const enrollmentId =
+      req.query.enrollmentId || req.body.enrollmentId;
+
+    if (!enrollmentId) {
+      return res.redirect(`${process.env.FRONTEND_URL}/payment-error`);
     }
-    
-    const db = getDB();
-    const enrollmentsCollection = db.collection('enrollments');
-    const coursesCollection = db.collection('courses');
-    const invoicesCollection = db.collection('invoices');
-    
-    // Find enrollment
-    const enrollment = await enrollmentsCollection.findOne({
-      _id: new ObjectId(value_a)
-    });
-    
-    if (!enrollment) {
-      console.error('Enrollment not found:', value_a);
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-failed?error=enrollment_not_found`);
-    }
-    
-    // If already completed, just redirect to success
-    if (enrollment.paymentStatus === 'completed') {
-      console.log('Payment already completed');
-      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment-success?enrollment=${value_a}`);
-    }
-    
-    // Update enrollment status
-    await enrollmentsCollection.updateOne(
-      { _id: new ObjectId(value_a) },
-      { 
-        $set: { 
-          paymentStatus: 'completed',
-          transactionId: tran_id,
-          validationId: val_id || 'manual',
-          paidAt: new Date(),
-          updatedAt: new Date()
-        } 
-      }
-    );
-    
-    // Add student to course's enrolled students
-    await coursesCollection.updateOne(
-      { _id: new ObjectId(enrollment.courseId) },
-      { 
-        $addToSet: { 
-          enrolledStudents: new ObjectId(enrollment.studentId) 
+
+    const db = getDb();
+    const enrollments = db.collection("enrollments");
+    const courses = db.collection("courses");
+    const users = db.collection("users");
+    const invoices = db.collection("invoices");
+
+    // update enrollment
+    const enrollment = await enrollments.findOneAndUpdate(
+      { _id: new ObjectId(enrollmentId) },
+      {
+        $set: {
+          paymentStatus: "completed",
+          status: "active",
+          paymentDate: new Date(),
         },
-        $inc: { totalEnrollments: 1 }
-      }
+      },
+      { returnDocument: "after" }
     );
-    
-    // Create invoice
-    const invoice = {
-      invoiceNumber: 'INV' + Date.now(),
-      enrollmentId: new ObjectId(value_a),
-      studentId: new ObjectId(enrollment.studentId),
-      courseId: new ObjectId(enrollment.courseId),
-      amount: enrollment.coursePrice || 100,
-      transactionId: tran_id || 'N/A',
-      validationId: val_id || 'manual',
-      paymentMethod: 'SSLCommerz',
-      status: 'paid',
-      studentName: enrollment.studentName,
-      studentEmail: enrollment.studentEmail,
-      courseTitle: enrollment.courseTitle,
-      createdAt: new Date()
-    };
-    
-    await invoicesCollection.insertOne(invoice);
-    
-    console.log('Payment successful for enrollment:', value_a);
-    
-    // Redirect to frontend success page
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/payment-success?enrollment=${value_a}&transaction=${tran_id}`);
-    
+
+    if (!enrollment.value) {
+      return res.redirect(`${process.env.FRONTEND_URL}/payment-error`);
+    }
+
+    const course = await courses.findOne({
+      _id: new ObjectId(enrollment.value.courseId),
+    });
+
+    const user = await users.findOne({
+      _id: new ObjectId(enrollment.value.userId),
+    });
+
+    // 🔥 CREATE INVOICE
+    await invoices.insertOne({
+      enrollmentId: new ObjectId(enrollmentId),
+      studentId: new ObjectId(enrollment.value.userId),
+      studentName: user?.name || "Student",
+      studentEmail: user?.email || "student@example.com",
+      courseTitle: course?.title || "Online Course",
+      amount: enrollment.value.amount || course?.price || 0,
+      paymentMethod: "SSLCommerz",
+      transactionId: enrollment.value.paymentId,
+      status: "paid",
+      invoiceNumber: `INV-${Date.now()}`,
+      createdAt: new Date(),
+    });
+
+    res.redirect(
+      `${process.env.FRONTEND_URL}/my-courses?payment=success`
+    );
   } catch (error) {
-    console.error('Payment success error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/payment-failed?error=server_error`);
+    console.error("Payment success error:", error);
+    res.redirect(`${process.env.FRONTEND_URL}/payment-error`);
   }
 };
 
-// Payment fail callback
+
 exports.paymentFail = async (req, res) => {
-  try {
-    console.log('Payment fail callback called');
-    
-    const data = req.method === 'POST' ? req.body : req.query;
-    const { value_a } = data; // enrollmentId
-    
-    console.log('Payment fail data:', data);
-    
-    if (value_a) {
-      const db = getDB();
-      const enrollmentsCollection = db.collection('enrollments');
-      
-      await enrollmentsCollection.updateOne(
-        { _id: new ObjectId(value_a) },
-        { 
-          $set: { 
-            paymentStatus: 'failed',
-            updatedAt: new Date()
-          } 
-        }
-      );
-      
-      console.log('Payment failed for enrollment:', value_a);
-    }
-    
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/payment-failed?enrollment=${value_a || ''}`);
-    
-  } catch (error) {
-    console.error('Payment fail error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/payment-failed`);
-  }
+  const { enrollmentId } = req.query;
+  await getDb()
+    .collection("enrollments")
+    .updateOne(
+      { _id: new ObjectId(enrollmentId) },
+      { $set: { paymentStatus: "failed" } }
+    );
+  res.redirect(`${process.env.FRONTEND_URL}/payment-failed`);
 };
 
-// Payment cancel callback
 exports.paymentCancel = async (req, res) => {
-  try {
-    console.log('Payment cancel callback called');
-    
-    const data = req.method === 'POST' ? req.body : req.query;
-    const { value_a } = data; // enrollmentId
-    
-    console.log('Payment cancel data:', data);
-    
-    if (value_a) {
-      const db = getDB();
-      const enrollmentsCollection = db.collection('enrollments');
-      
-      await enrollmentsCollection.updateOne(
-        { _id: new ObjectId(value_a) },
-        { 
-          $set: { 
-            paymentStatus: 'cancelled',
-            updatedAt: new Date()
-          } 
-        }
+  const { enrollmentId } = req.query;
+  await getDb()
+    .collection("enrollments")
+    .updateOne(
+      { _id: new ObjectId(enrollmentId) },
+      { $set: { paymentStatus: "cancelled" } }
+    );
+  res.redirect(`${process.env.FRONTEND_URL}/payment-cancelled`);
+};
+
+exports.paymentIPN = async (req, res) => {
+  const { tran_id, status } = req.body;
+  if (status === "VALID") {
+    await getDb()
+      .collection("enrollments")
+      .updateOne(
+        { paymentId: tran_id },
+        { $set: { paymentStatus: "completed", status: "active" } }
       );
-      
-      console.log('Payment cancelled for enrollment:', value_a);
+  }
+  res.json({ ok: true });
+};
+
+/* =========================
+   INVOICE
+========================= */
+exports.downloadInvoice = async (req, res) => {
+  try {
+    const { enrollmentId } = req.params;
+    const userId = req.user.id;
+
+    const db = getDb();
+    const enrollments = db.collection("enrollments");
+    const courses = db.collection("courses");
+    const users = db.collection("users");
+
+    const enrollment = await enrollments.findOne({
+      _id: new ObjectId(enrollmentId),
+    });
+
+    if (!enrollment) {
+      return res.status(404).json({ message: "Enrollment not found" });
     }
-    
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/payment-cancelled?enrollment=${value_a || ''}`);
-    
+
+    if (enrollment.userId.toString() !== userId) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+
+    if (enrollment.paymentStatus !== "completed") {
+      return res.status(400).json({ message: "Payment not completed" });
+    }
+
+    const course = await courses.findOne({
+      _id: new ObjectId(enrollment.courseId),
+    });
+
+    const user = await users.findOne({
+      _id: new ObjectId(enrollment.userId),
+    });
+
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="invoice-${enrollmentId}.pdf"`
+    );
+
+    doc.pipe(res);
+
+    /* =========================
+       HEADER
+    ========================= */
+    doc
+      .fillColor("#1f2937")
+      .fontSize(28)
+      .font("Helvetica-Bold")
+      .text("E-Learnify", { align: "left" });
+
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#6b7280")
+      .text("Online Learning Platform");
+
+    doc.moveDown(1.5);
+
+    doc
+      .fontSize(22)
+      .font("Helvetica-Bold")
+      .fillColor("#111827")
+      .text("INVOICE", { align: "right" });
+
+    doc.moveDown(2);
+
+    /* =========================
+       INVOICE INFO
+    ========================= */
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("#374151")
+      .text(`Invoice ID: INV-${enrollmentId.slice(-8).toUpperCase()}`)
+      .text(`Invoice Date: ${new Date().toLocaleDateString()}`)
+      .text(
+        `Payment Date: ${
+          enrollment.paymentDate
+            ? new Date(enrollment.paymentDate).toLocaleDateString()
+            : "N/A"
+        }`
+      );
+
+    doc.moveDown(1.5);
+
+    /* =========================
+       BILL TO
+    ========================= */
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(14)
+      .fillColor("#111827")
+      .text("BILL TO");
+
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .fillColor("#374151")
+      .text(user?.name || "Student")
+      .text(user?.email || "student@example.com");
+
+    doc.moveDown(2);
+
+    /* =========================
+       COURSE TABLE
+    ========================= */
+    const tableTop = doc.y;
+
+    doc
+      .font("Helvetica-Bold")
+      .fillColor("#ffffff")
+      .rect(50, tableTop, 500, 30)
+      .fill("#2563eb");
+
+    doc
+      .fillColor("#ffffff")
+      .fontSize(12)
+      .text("Course", 60, tableTop + 9)
+      .text("Amount", 430, tableTop + 9, { align: "right" });
+
+    const rowY = tableTop + 40;
+
+    doc
+      .font("Helvetica")
+      .fillColor("#111827")
+      .fontSize(12)
+      .text(course?.title || "Online Course", 60, rowY)
+      .text(
+        `$${enrollment.amount || course?.price || "0"}`,
+        430,
+        rowY,
+        { align: "right" }
+      );
+
+    doc.moveDown(4);
+
+    /* =========================
+       TOTAL
+    ========================= */
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(14)
+      .fillColor("#111827")
+      .text("Total Paid:", { continued: true })
+      .text(
+        ` $${enrollment.amount || course?.price || "0"}`,
+        { align: "right" }
+      );
+
+    doc.moveDown(2);
+
+    /* =========================
+       PAYMENT INFO
+    ========================= */
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(14)
+      .fillColor("#111827")
+      .text("Payment Information");
+
+    doc
+      .font("Helvetica")
+      .fontSize(12)
+      .fillColor("#374151")
+      .text(`Method: ${enrollment.paymentGateway || "SSLCommerz"}`)
+      .text(`Transaction ID: ${enrollment.paymentId || "N/A"}`)
+      .text(`Status: ${enrollment.paymentStatus}`);
+
+    doc.moveDown(3);
+
+    /* =========================
+       FOOTER
+    ========================= */
+    doc
+      .fontSize(10)
+      .fillColor("#6b7280")
+      .text(
+        "Thank you for learning with E-Learnify.\nThis invoice was generated automatically.",
+        { align: "center" }
+      );
+
+    doc.end();
   } catch (error) {
-    console.error('Payment cancel error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    res.redirect(`${frontendUrl}/payment-cancelled`);
+    console.error("Invoice error:", error);
+    res.status(500).json({ message: "Failed to generate invoice" });
   }
 };
 
-// IPN (Instant Payment Notification) handler
-exports.paymentIPN = async (req, res) => {
-  try {
-    console.log('IPN received:', req.body);
-    
-    // SSLCommerz sends IPN as form-urlencoded
-    const paymentData = req.body;
-    
-    // Process IPN here if needed
-    // Usually you don't need to do much since success/fail callbacks handle it
-    
-    res.status(200).send('IPN received');
-    
-  } catch (error) {
-    console.error('IPN error:', error);
-    res.status(500).send('IPN error');
-  }
+/* =========================
+   CHECK INVOICE
+========================= */
+exports.checkInvoice = async (req, res) => {
+  const { enrollmentId } = req.params;
+  const userId = req.user.id;
+
+  const enrollment = await getDb()
+    .collection("enrollments")
+    .findOne({ _id: new ObjectId(enrollmentId) });
+
+  if (!enrollment) return res.status(404).json({ success: false });
+  if (enrollment.userId.toString() !== userId)
+    return res.status(403).json({ success: false });
+
+  res.json({
+    success: true,
+    hasInvoice: enrollment.paymentStatus === "completed",
+  });
 };
+
+/* =========================
+   EXTRA
+========================= */
+exports.testInvoice = (req, res) => {
+  res.json({ ok: true });
+};
+
+exports.downloadInvoiceSimple = exports.downloadInvoice;

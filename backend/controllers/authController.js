@@ -1,120 +1,85 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { getDB } = require('../config/db');
-const { ObjectId } = require('mongodb');
+// backend/controllers/authController.js
 
-// Register নতুন user
-exports.register = async (req, res) => {
-  try {
-    const { name, email, password, role } = req.body;
-    
-    // Validation
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'সব field পূরণ করুন' });
-    }
-    
-    const db = getDB();
-    const usersCollection = db.collection('users');
-    
-    // Check if user already exists
-    const existingUser = await usersCollection.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'এই email দিয়ে ইতিমধ্যে একাউন্ট আছে' });
-    }
-    
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // Create user
-    const newUser = {
-      name,
-      email,
-      password: hashedPassword,
-      role: role || 'student',
-      enrolledCourses: [],
-      completedCourses: [],
-      createdAt: new Date()
-    };
-    
-    const result = await usersCollection.insertOne(newUser);
-    
-    // Create JWT token
-    const token = jwt.sign(
-      { 
-        userId: result.insertedId,
-        email: email,
-        role: newUser.role 
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    
-    res.status(201).json({
-      message: 'Registration সফল হয়েছে',
-      token,
-      user: {
-        id: result.insertedId,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role
-      }
-    });
-    
-  } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const { getDb } = require("../config/db"); // 🔥 FIX: must be getDb
 
-// Login existing user
+/* =========================
+   LOGIN
+========================= */
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    // Validation
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email এবং password দিন' });
-    }
-    
-    const db = getDB();
-    const usersCollection = db.collection('users');
-    
-    // Find user
-    const user = await usersCollection.findOne({ email });
+
+    const db = getDb();
+    const users = db.collection("users");
+
+    const user = await users.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'ভুল email অথবা password' });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
-    
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(400).json({ message: 'ভুল email অথবা password' });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
     }
-    
-    // Create token
+
     const token = jwt.sign(
-      { 
-        userId: user._id,
+      {
+        id: user._id.toString(),
+        role: user.role,
         email: user.email,
-        role: user.role 
       },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: "7d" }
     );
-    
+
     res.json({
-      message: 'Login সফল',
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
-      }
+        role: user.role,
+      },
     });
-    
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Login failed" });
+  }
+};
+
+/* =========================
+   REGISTER
+========================= */
+exports.register = async (req, res) => {
+  try {
+    const { name, email, password, role = "user" } = req.body;
+
+    const db = getDb();
+    const users = db.collection("users");
+
+    const exists = await users.findOne({ email });
+    if (exists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await users.insertOne({
+      name,
+      email,
+      password: hashedPassword,
+      role,
+      createdAt: new Date(),
+    });
+
+    res.status(201).json({
+      success: true,
+      userId: result.insertedId,
+    });
+  } catch (error) {
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Registration failed" });
   }
 };

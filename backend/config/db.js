@@ -1,26 +1,36 @@
-const { MongoClient } = require('mongodb');
-require('dotenv').config();
+// backend/config/db.js
 
-let db; // 🔐 shared db instance
+const { MongoClient } = require("mongodb");
+
+let db;
 
 const connectDB = async () => {
   try {
-    const client = new MongoClient(process.env.MONGODB_URI);
+    const uri = process.env.MONGODB_URI; // 🔥 FIX HERE
+
+    if (!uri) {
+      throw new Error("MONGODB_URI not found in .env");
+    }
+
+    const client = new MongoClient(uri);
     await client.connect();
 
-    db = client.db('elearnify'); // ✅ database name
-    console.log('✅ MongoDB Connected');
+    db = client.db(); // elearnify
+    console.log("✅ MongoDB connected");
   } catch (error) {
-    console.error('❌ MongoDB Connection Error:', error);
+    console.error("❌ MongoDB connection failed:", error.message);
     process.exit(1);
   }
 };
 
-const getDB = () => {
+const getDb = () => {
   if (!db) {
-    throw new Error('Database not connected');
+    throw new Error("Database not initialized");
   }
   return db;
 };
 
-module.exports = { connectDB, getDB };
+module.exports = {
+  connectDB,
+  getDb,
+};

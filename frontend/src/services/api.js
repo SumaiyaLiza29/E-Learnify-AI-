@@ -1,91 +1,81 @@
-import axios from 'axios';
+// frontend/src/services/api.js
 
-const API_URL = 'http://localhost:5000/api';
+import axios from "axios";
+
+const API_BASE = "http://localhost:5000/api";
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    "Content-Type": "application/json",
+  },
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Auth APIs
+/* =========================
+   AUTH
+========================= */
 export const authAPI = {
-  register: (userData) => api.post('/auth/register', userData),
-  login: (credentials) => api.post('/auth/login', credentials)
+  register: (data) => api.post("/auth/register", data),
+  login: (data) => api.post("/auth/login", data),
 };
 
-// Course APIs
+/* =========================
+   COURSES
+========================= */
 export const courseAPI = {
-  getAllCourses: () => api.get('/courses'),
+  getAllCourses: () => api.get("/courses"),
   getCourseById: (id) => api.get(`/courses/${id}`),
-  createCourse: (courseData) => api.post('/courses', courseData),
-  updateCourse: (id, courseData) => api.put(`/courses/${id}`, courseData),
+  createCourse: (data) => api.post("/courses", data),
+  updateCourse: (id, data) => api.put(`/courses/${id}`, data),
   deleteCourse: (id) => api.delete(`/courses/${id}`),
-  getInstructorCourses: () => api.get('/courses/my/courses')
+  getInstructorCourses: () => api.get("/courses/my/courses"),
 };
 
-// Enrollment APIs (নতুন)
+/* =========================
+   ENROLLMENTS
+========================= */
 export const enrollmentAPI = {
-  createEnrollment: (courseId) => api.post('/enrollments', { courseId }),
-  getMyEnrollments: () => api.get('/enrollments/my-enrollments'),
-  getEnrollmentById: (id) => api.get(`/enrollments/${id}`),
-  updateProgress: (id, progress) => api.put(`/enrollments/${id}/progress`, { progress })
+  createEnrollment: (courseId) =>
+    api.post("/enrollments", { courseId }),
+  getMyEnrollments: () =>
+    api.get("/enrollments/my-enrollments"),
+  getEnrollmentById: (id) =>
+    api.get(`/enrollments/${id}`),
+  updateProgress: (id, progress) =>
+    api.put(`/enrollments/${id}/progress`, { progress }),
 };
 
-// Payment APIs (নতুন)
+/* =========================
+   PAYMENTS
+========================= */
 export const paymentAPI = {
-  initiatePayment: (enrollmentId) => api.post('/payments/initiate', { enrollmentId })
+  initiatePayment: (enrollmentId) =>
+    api.post("/payments/init", { enrollmentId }),
+
+  checkInvoice: (enrollmentId) =>
+    api.get(`/payments/invoice-check/${enrollmentId}`),
+
+  downloadInvoice: (enrollmentId) =>
+    window.open(
+      `${API_BASE}/payments/invoice/${enrollmentId}`,
+      "_blank"
+    ),
 };
 
-
-export const getMyCertificates = async (token) => {
-  const res = await fetch("http://localhost:5000/api/certificates/my", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return res.json();
-};
-
-
-
-const API_BASE = "http://localhost:5000/api";
-
-// =======================
-// ENROLL COURSE
-// =======================
-export const enrollCourse = async (courseId, token) => {
-  const res = await fetch(`${API_BASE}/enrollments`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ courseId }),
-  });
-
-  return res.json();
-};
-
-export const getInvoiceByEnrollment = async (enrollmentId, token) => {
-  const res = await fetch(
-    `http://localhost:5000/api/invoices/${enrollmentId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-  return res.json();
-};
+// /* =========================
+//    CERTIFICATES
+// ========================= */
+// export const certificateAPI = {
+//   getMyCertificates: () =>
+//     api.get("/certificates/my"),
+// };
 
 export default api;

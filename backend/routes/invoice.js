@@ -1,13 +1,15 @@
-// routes/invoice.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const invoiceController = require('../controllers/invoiceController');
-const { authenticate } = require('../middleware/auth');
+const invoiceController = require("../controllers/invoiceController");
+const { authenticate } = require("../middleware/auth");
 
-// Get invoice details
-router.get('/:enrollmentId', authenticate, invoiceController.getInvoice);
+// JSON check (needs auth)
+router.get("/:enrollmentId", authenticate, invoiceController.getInvoice);
 
-// Download invoice PDF
-router.get('/:enrollmentId/download', authenticate, invoiceController.downloadInvoice);
+// 🔥 PDF DOWNLOAD (NO AUTH – because window.open can't send headers)
+router.get(
+  "/download/:enrollmentId",
+  invoiceController.downloadInvoice
+);
 
 module.exports = router;

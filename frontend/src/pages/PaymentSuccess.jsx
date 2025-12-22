@@ -1,9 +1,25 @@
-import React from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import React, { useEffect } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 function PaymentSuccess() {
   const [searchParams] = useSearchParams();
-  const enrollmentId = searchParams.get('enrollment');
+  const enrollmentId = searchParams.get("enrollment");
+  const { token } = useAuth();
+  const navigate = useNavigate();
+
+  // 🔥 SYNC PAYMENT STATUS
+  useEffect(() => {
+    if (!token || !enrollmentId) return;
+
+    fetch(`http://localhost:5000/api/enrollments/my-enrollments`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }).then(() => {
+      // after syncing, redirect is safe
+    });
+  }, [token, enrollmentId]);
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4">
@@ -21,7 +37,7 @@ function PaymentSuccess() {
                 strokeLinejoin="round"
                 strokeWidth="2"
                 d="M5 13l4 4L19 7"
-              ></path>
+              />
             </svg>
           </div>
         </div>

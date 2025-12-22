@@ -1,7 +1,11 @@
+// backend/middleware/auth.js
+
 const jwt = require("jsonwebtoken");
 
-// 🔐 Authentication middleware
-exports.authenticate = (req, res, next) => {
+/* =========================
+   AUTHENTICATION
+========================= */
+const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -12,21 +16,63 @@ exports.authenticate = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { userId, role }
+
+    req.user = {
+      id: decoded.id || decoded.userId,
+      role: decoded.role,
+      email: decoded.email,
+    };
+
     next();
   } catch (error) {
     return res.status(401).json({ message: "Invalid token" });
   }
 };
 
-// 🛡️ Role-based authorization middleware
-exports.authorize = (roles = []) => {
+/* =========================
+   ROLE BASED
+========================= */
+const authorize = (roles = []) => {
   return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
-        message: "Forbidden: You do not have permission",
+        message: "Forbidden",
       });
     }
+
     next();
   };
+};
+
+const isInstructor = (req, res, next) => {
+  if (req.user?.role !== "instructor") {
+    return res.status(403).json({ message: "Instructor access only" });
+  }
+  next();
+};
+
+const isUser = (req, res, next) => {
+  if (req.user?.role !== "user") {
+    return res.status(403).json({ message: "User access only" });
+  }
+  next();
+};
+
+const isAdmin = (req, res, next) => {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({ message: "Admin access only" });
+  }
+  next();
+};
+
+module.exports = {
+  authenticate,
+  authorize,
+  isInstructor,
+  isUser,
+  isAdmin,
 };
