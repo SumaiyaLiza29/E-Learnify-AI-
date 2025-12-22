@@ -76,5 +76,16 @@ export const enrollCourse = async (courseId, token) => {
   return res.json();
 };
 
+export const getInvoiceByEnrollment = async (enrollmentId, token) => {
+  const res = await fetch(
+    `http://localhost:5000/api/invoices/${enrollmentId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+  return res.json();
+};
 
 export default api;

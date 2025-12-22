@@ -1,24 +1,23 @@
-const express = require("express");
+// routes/payments.js
+const express = require('express');
 const router = express.Router();
-const { authenticate } = require("../middleware/auth");
+const paymentController = require('../controllers/paymentController');
+const { authenticate } = require('../middleware/auth');
 
-// TEMP test route
-router.post("/init", authenticate, (req, res) => {
-  res.json({
-    message: "Payment initialized (placeholder)",
-  });
-});
+// Payment routes
+router.post("/init", authenticate, paymentController.initiatePayment);
 
-router.post("/success", (req, res) => {
-  res.send("Payment success callback");
-});
+// SSLCommerz callback routes - handle both GET and POST
+router.post("/success", paymentController.paymentSuccess);
+router.get("/success", paymentController.paymentSuccess);
 
-router.post("/fail", (req, res) => {
-  res.send("Payment failed");
-});
+router.post("/fail", paymentController.paymentFail);
+router.get("/fail", paymentController.paymentFail);
 
-router.post("/cancel", (req, res) => {
-  res.send("Payment cancelled");
-});
+router.post("/cancel", paymentController.paymentCancel);
+router.get("/cancel", paymentController.paymentCancel);
+
+// IPN route (SSLCommerz server-to-server)
+router.post("/ipn", express.urlencoded({ extended: true }), paymentController.paymentIPN);
 
 module.exports = router;

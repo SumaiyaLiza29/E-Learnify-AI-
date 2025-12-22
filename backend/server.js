@@ -28,13 +28,16 @@ const courseRoutes = require('./routes/courses');
 const enrollmentRoutes = require('./routes/enrollments');
 const paymentRoutes = require('./routes/payments');
 const certificateRoutes = require('./routes/certificates'); // নতুন
+const invoiceRoutes = require('./routes/invoice');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/certificates', certificateRoutes); // নতুন
-
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use('/api/invoices', invoiceRoutes);
 // Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
