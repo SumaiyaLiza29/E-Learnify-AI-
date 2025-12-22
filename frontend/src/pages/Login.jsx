@@ -1,107 +1,160 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { authAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext'; // ✅ ADD THIS
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { authAPI } from "../services/api";
+import { useAuth } from "../context/AuthContext";
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
+
+const item = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
 
 function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth(); // ✅ ADD THIS
+  const { login, demoLogin } = useAuth();
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
-  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
       const response = await authAPI.login(formData);
-
-      // ❌ REMOVE these two lines
-      // localStorage.setItem('token', response.data.token);
-      // localStorage.setItem('user', JSON.stringify(response.data.user));
-
-      // ✅ USE CONTEXT LOGIN
       login(response.data.token, response.data.user);
-
-      navigate('/dashboard'); // now this will WORK
+      navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || "Login failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-        <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">
-          Login to E-learnify
-        </h2>
-
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <p className="text-center text-gray-600 mt-6">
-          New user?{' '}
-          <Link to="/register" className="text-blue-600 hover:underline">
-            Sign up here
-          </Link>
-        </p>
+    <div className="relative min-h-screen flex items-center justify-center bg-[#0B0F1A] overflow-hidden px-4">
+      
+      {/* Background glow */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute top-1/4 left-1/4 w-[320px] h-[320px] bg-indigo-500/25 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-[320px] h-[320px] bg-blue-500/25 rounded-full blur-3xl" />
       </div>
+
+      <motion.div
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="w-full max-w-md"
+      >
+        <motion.div
+          variants={item}
+          className="bg-white/8 backdrop-blur-xl border border-white/12 rounded-2xl shadow-2xl p-8"
+        >
+          <motion.h2
+            variants={item}
+            className="text-3xl font-bold text-slate-100 text-center mb-2"
+          >
+            Welcome Back
+          </motion.h2>
+
+          <motion.p
+            variants={item}
+            className="text-center text-slate-400 mb-8"
+          >
+            Login to continue your learning journey
+          </motion.p>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-500/10 border border-red-500/25 text-red-300 px-4 py-3 rounded-lg mb-6 text-sm"
+            >
+              {error}
+            </motion.div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <motion.div variants={item}>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/15 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+              />
+            </motion.div>
+
+            <motion.div variants={item}>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                placeholder="••••••••"
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/15 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+              />
+            </motion.div>
+
+            <motion.button
+              variants={item}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-500 to-blue-600 hover:opacity-90 transition shadow-lg"
+            >
+              {loading ? "Logging in..." : "Login"}
+            </motion.button>
+          </form>
+
+          <motion.p
+            variants={item}
+            className="text-center text-slate-400 mt-6 text-sm"
+          >
+            New user?{" "}
+            <Link
+              to="/register"
+              className="text-indigo-400 hover:text-indigo-300 transition underline-offset-4 hover:underline"
+            >
+              Create an account
+            </Link>
+            <div className="mt-6 text-center">
+  <button
+    type="button"
+    onClick={demoLogin}
+    className="text-sm text-indigo-600 hover:text-indigo-700 underline"
+  >
+    Login as Demo Developer
+  </button>
+</div>
+
+          </motion.p>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

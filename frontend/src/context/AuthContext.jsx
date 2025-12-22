@@ -3,6 +3,13 @@ import { createContext, useContext, useEffect, useState } from "react";
 // ✅ 1. Give a default value (null is OK, but explicit is better)
 const AuthContext = createContext(null);
 
+const DEMO_USER = {
+  id: "demo-user",
+  name: "Demo Developer",
+  email: "demo@elearnify.dev",
+  role: "student",
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
