@@ -9,16 +9,12 @@ function Certificates() {
     const fetchCertificates = async () => {
       try {
         const token = localStorage.getItem("token");
-
         const res = await axios.get(
           "http://localhost:5000/api/certificates/my-certificates",
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
-
         setCertificates(res.data);
       } catch (error) {
         console.error("Certificate load failed", error);
@@ -31,26 +27,31 @@ function Certificates() {
   }, []);
 
   if (loading) {
-    return <div className="p-8">Loading certificates...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-900 text-white">
+        <div className="text-xl animate-pulse">Loading certificates...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <h1 className="text-3xl font-bold mb-6">My Certificates</h1>
+    <div className="min-h-screen bg-gray-900 p-8">
+      <h1 className="text-3xl font-bold text-white mb-6">My Certificates</h1>
 
       {certificates.length === 0 ? (
-        <p className="text-gray-600">
+        <p className="text-gray-400">
           You have not completed any courses yet.
         </p>
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
           {certificates.map((cert) => (
-            <div key={cert._id} className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold">
-                {cert.courseTitle}
-              </h2>
+            <div
+              key={cert._id}
+              className="bg-gray-800 shadow-xl rounded-2xl p-6 text-white hover:shadow-2xl transition"
+            >
+              <h2 className="text-xl font-semibold mb-2">{cert.courseTitle}</h2>
 
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-gray-400 text-sm">
                 Completed on:{" "}
                 {new Date(cert.completionDate).toLocaleDateString()}
               </p>
@@ -59,7 +60,7 @@ function Certificates() {
                 href={cert.certificateUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block mt-4 text-blue-600 hover:underline"
+                className="inline-block mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
               >
                 Download Certificate →
               </a>

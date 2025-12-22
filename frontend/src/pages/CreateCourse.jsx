@@ -44,19 +44,22 @@ function CreateCourse() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold mb-6">Create New Course</h1>
+    <div className="min-h-screen bg-gray-900 py-12 px-6 sm:px-12">
+      <div className="max-w-3xl mx-auto bg-gray-800 rounded-3xl shadow-2xl border border-gray-700 p-8">
+        <h1 className="text-3xl font-extrabold text-white mb-8 text-center">
+          Create New Course
+        </h1>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-800 text-red-200 px-4 py-3 rounded mb-6 text-center">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Course Title */}
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
+            <label className="block text-gray-300 font-medium mb-2">
               Course Title *
             </label>
             <input
@@ -65,13 +68,14 @@ function CreateCourse() {
               value={formData.title}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-900 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="e.g., Complete React.js Course"
             />
           </div>
 
+          {/* Course Description */}
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
+            <label className="block text-gray-300 font-medium mb-2">
               Course Description *
             </label>
             <textarea
@@ -80,14 +84,15 @@ function CreateCourse() {
               onChange={handleChange}
               required
               rows="6"
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-900 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="What will students learn in this course?"
             ></textarea>
           </div>
 
+          {/* Price & Duration */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
+              <label className="block text-gray-300 font-medium mb-2">
                 Price (৳) *
               </label>
               <input
@@ -97,13 +102,13 @@ function CreateCourse() {
                 onChange={handleChange}
                 required
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-900 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="1500"
               />
             </div>
 
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
+              <label className="block text-gray-300 font-medium mb-2">
                 Duration (hours)
               </label>
               <input
@@ -112,21 +117,22 @@ function CreateCourse() {
                 value={formData.duration}
                 onChange={handleChange}
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-900 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="10"
               />
             </div>
           </div>
 
+          {/* Category */}
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
+            <label className="block text-gray-300 font-medium mb-2">
               Category
             </label>
             <select
               name="category"
               value={formData.category}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-900 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="Programming">Programming</option>
               <option value="Web Development">Web Development</option>
@@ -138,8 +144,9 @@ function CreateCourse() {
             </select>
           </div>
 
+          {/* Tags */}
           <div>
-            <label className="block text-gray-700 font-medium mb-2">
+            <label className="block text-gray-300 font-medium mb-2">
               Tags (comma separated)
             </label>
             <input
@@ -147,15 +154,16 @@ function CreateCourse() {
               name="tags"
               value={formData.tags}
               onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-600 rounded-lg bg-gray-900 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="react, javascript, frontend"
             />
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded font-medium hover:bg-blue-700 disabled:bg-blue-300"
+            className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 disabled:bg-blue-400 transition"
           >
             {loading ? 'Creating Course...' : 'Create Course'}
           </button>
