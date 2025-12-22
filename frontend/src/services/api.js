@@ -46,4 +46,35 @@ export const paymentAPI = {
   initiatePayment: (enrollmentId) => api.post('/payments/initiate', { enrollmentId })
 };
 
+
+export const getMyCertificates = async (token) => {
+  const res = await fetch("http://localhost:5000/api/certificates/my", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return res.json();
+};
+
+
+
+const API_BASE = "http://localhost:5000/api";
+
+// =======================
+// ENROLL COURSE
+// =======================
+export const enrollCourse = async (courseId, token) => {
+  const res = await fetch(`${API_BASE}/enrollments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ courseId }),
+  });
+
+  return res.json();
+};
+
+
 export default api;

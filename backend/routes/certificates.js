@@ -1,8 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const certificateController = require("../controllers/certificateController");
+
+const {
+  getMyCertificates,
+} = require("../controllers/certificateController");
+
 const { authenticate } = require("../middleware/auth");
 
-router.get("/my-certificates", authenticate, certificateController.getMyCertificates);
+// ✅ ONLY THIS
+router.get("/my", authenticate, getMyCertificates);
 
 module.exports = router;

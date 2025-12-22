@@ -121,14 +121,13 @@ exports.updateProgress = async (req, res) => {
   try {
     const { id } = req.params;
     const { progress } = req.body;
-    const userId = req.user.userId;
 
-    if (progress === undefined) {
-      return res.status(400).json({ message: "Progress is required" });
-    }
+    // ✅ FIX: userId → id
+    const userId = req.user.id;
 
     const db = getDB();
     const enrollments = db.collection("enrollments");
+    const certificates = db.collection("certificates");
 
     const enrollment = await enrollments.findOne({
       _id: new ObjectId(id),
@@ -144,9 +143,29 @@ exports.updateProgress = async (req, res) => {
       updatedAt: new Date(),
     };
 
-    // If completed
+    // 🎓 Course completed
     if (Number(progress) === 100) {
       update.completionDate = new Date();
+
+      const exists = await certificates.findOne({
+        enrollmentId: new ObjectId(id),
+      });
+
+      if (!exists) {
+        const certUrl = `http://localhost:5000/certificates/${id}.pdf`;
+
+        await certificates.insertOne({
+          userId: new ObjectId(userId),
+          enrollmentId: new ObjectId(id),
+          courseId: enrollment.courseId,
+          courseTitle: enrollment.courseTitle,
+          studentName: enrollment.studentName,
+          issuedAt: new Date(),
+          certificateUrl: certUrl,
+        });
+
+        update.certificateUrl = certUrl;
+      }
     }
 
     await enrollments.updateOne(

@@ -1,39 +1,59 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-const AuthContext = createContext();
+// ✅ 1. Give a default value (null is OK, but explicit is better)
+const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true); // ✅ prevents early access
 
-  // 🔄 Reload হলেও user ধরে রাখবে
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const u = localStorage.getItem("user");
+    const t = localStorage.getItem("token");
+
+    if (u && t) {
+      try {
+        setUser(JSON.parse(u));
+        setToken(t);
+      } catch (err) {
+        console.error("Invalid user in localStorage");
+        localStorage.clear();
+      }
     }
+    setLoading(false); // ✅ done loading
   }, []);
 
-  // ✅ Login handler
   const login = (token, userData) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData); // 🔥 MOST IMPORTANT
+    setToken(token);
+    setUser(userData);
   };
 
-  // 🚪 Logout handler
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
+    setToken(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider
+      value={{ user, token, login, logout, loading }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+// ✅ 2. SAFE hook (prevents your crash)
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+
+  if (context === null) {
+    throw new Error("useAuth must be used inside an AuthProvider");
+  }
+
+  return context;
+};

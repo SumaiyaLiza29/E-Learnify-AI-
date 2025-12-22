@@ -1,74 +1,90 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { getMyCertificates } from "../services/api";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
-function Certificates() {
-  const [certificates, setCertificates] = useState([]);
-  const [loading, setLoading] = useState(true);
+const Certificates = () => {
+  const { token } = useAuth();
+  const [certs, setCerts] = useState([]);
 
   useEffect(() => {
-    const fetchCertificates = async () => {
-      try {
-        const token = localStorage.getItem("token");
+    if (token) {
+      getMyCertificates(token).then((data) => {
+        setCerts(Array.isArray(data) ? data : []);
+      });
+    }
+  }, [token]);
 
-        const res = await axios.get(
-          "http://localhost:5000/api/certificates/my-certificates",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+  // ✅ PDF generator
+  const downloadPDF = async (cert) => {
+    const element = document.getElementById(`cert-${cert._id}`);
 
-        setCertificates(res.data);
-      } catch (error) {
-        console.error("Certificate load failed", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const canvas = await html2canvas(element, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
 
-    fetchCertificates();
-  }, []);
+    const pdf = new jsPDF("p", "mm", "a4");
+    const pdfWidth = 210;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-  if (loading) {
-    return <div className="p-8">Loading certificates...</div>;
-  }
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`${cert.courseTitle}-certificate.pdf`);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <h1 className="text-3xl font-bold mb-6">My Certificates</h1>
+    <div>
+      <h2>My Certificates</h2>
 
-      {certificates.length === 0 ? (
-        <p className="text-gray-600">
-          You have not completed any courses yet.
-        </p>
+      {certs.length === 0 ? (
+        <p>You have not completed any courses yet.</p>
       ) : (
-        <div className="grid md:grid-cols-2 gap-6">
-          {certificates.map((cert) => (
-            <div key={cert._id} className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold">
-                {cert.courseTitle}
-              </h2>
+        certs.map((c) => (
+          <div key={c._id} style={{ marginBottom: "40px" }}>
+            {/* 🎓 CERTIFICATE VIEW */}
+            <div
+              id={`cert-${c._id}`}
+              style={{
+                width: "800px",
+                padding: "40px",
+                border: "10px solid #1e3a8a",
+                textAlign: "center",
+                background: "#fff",
+              }}
+            >
+              <h1>Certificate of Completion</h1>
+              <p>This is to certify that</p>
 
-              <p className="text-sm text-gray-500 mt-2">
-                Completed on:{" "}
-                {new Date(cert.completionDate).toLocaleDateString()}
+              <h2>{c.studentName || "Student"}</h2>
+
+              <p>has successfully completed the course</p>
+
+              <h3>{c.courseTitle}</h3>
+
+              <p>
+                Issued on:{" "}
+                {c.issuedAt
+                  ? new Date(c.issuedAt).toDateString()
+                  : "N/A"}
               </p>
-
-              <a
-                href={cert.certificateUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-4 text-blue-600 hover:underline"
-              >
-                Download Certificate →
-              </a>
             </div>
-          ))}
-        </div>
+
+            {/* ⬇️ DOWNLOAD BUTTON */}
+            <button
+              onClick={() => downloadPDF(c)}
+              style={{
+                marginTop: "12px",
+                padding: "10px 20px",
+                fontSize: "16px",
+                cursor: "pointer",
+              }}
+            >
+              Download PDF
+            </button>
+          </div>
+        ))
       )}
     </div>
   );
-}
+};
 
 export default Certificates;

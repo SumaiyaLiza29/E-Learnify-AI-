@@ -3,9 +3,17 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function Navbar() {
-  const { user, logout } = useAuth();
+  const auth = useAuth();           // ✅ SAFE
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // ⛔ Prevent crash if context not ready
+  if (!auth) return null;
+
+  const { user, logout, loading } = auth;
+
+  // ⛔ Wait until auth is loaded from localStorage
+  if (loading) return null;
 
   const handleLogout = () => {
     logout();
@@ -52,10 +60,7 @@ function Navbar() {
 
           {!user ? (
             <>
-              <Link
-                to="/login"
-                className="text-gray-700 hover:text-blue-600"
-              >
+              <Link to="/login" className="text-gray-700 hover:text-blue-600">
                 Login
               </Link>
               <Link
