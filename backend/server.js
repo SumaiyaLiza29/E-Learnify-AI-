@@ -37,13 +37,18 @@ const enrollmentRoutes = require("./routes/enrollments");
 const paymentRoutes = require("./routes/payments");
 const invoiceRoutes = require("./routes/invoice");
 const instructorRoutes = require("./routes/instructor");
+const adminRoutes = require("./routes/adminRoutes");
 
+
+app.use("/api/ai", require("./routes/aiRoutes"));
 app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/enrollments", enrollmentRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/instructor", instructorRoutes);
+app.use("/api/admin", adminRoutes);
+
 
 /* =========================
    TEST

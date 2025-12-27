@@ -69,10 +69,23 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
+
+function authorizeRoles(...roles) {
+  return (req, res, next) => {
+    if (!req.user?.role) return res.status(403).json({ message: "No role" });
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    next();
+  };
+}
+
+
 module.exports = {
-  authenticate,
   authorize,
   isInstructor,
   isUser,
   isAdmin,
+  authenticate,
+  authorizeRoles,
 };

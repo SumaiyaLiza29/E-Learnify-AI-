@@ -70,12 +70,18 @@ export const paymentAPI = {
     ),
 };
 
-// /* =========================
-//    CERTIFICATES
-// ========================= */
-// export const certificateAPI = {
-//   getMyCertificates: () =>
-//     api.get("/certificates/my"),
-// };
+export const getMyCertificates = async (token) => {
+  const res = await fetch(`${API_BASE}/certificates/my`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch certificates");
+  }
+
+  return res.json();
+};
 
 export default api;
