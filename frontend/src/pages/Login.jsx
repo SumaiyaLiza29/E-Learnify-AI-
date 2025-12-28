@@ -10,9 +10,10 @@ import {
   Mail, 
   Lock, 
   Sparkles, 
-  Github,
-  Chrome,
-  User
+  User,
+  GraduationCap,
+  Users,
+  Shield
 } from "lucide-react";
 
 const container = {
@@ -38,13 +39,48 @@ const item = {
   },
 };
 
+// Role configuration
+const ROLES = {
+  student: {
+    label: "Student",
+    icon: GraduationCap,
+    color: "from-emerald-500 to-teal-500",
+    demoColor: "from-emerald-600 to-teal-600",
+    demoHover: "from-emerald-500 to-teal-500",
+    shadow: "emerald",
+    placeholder: "student@example.com",
+    dashboard: "/dashboard"
+  },
+  instructor: {
+    label: "Instructor",
+    icon: Users,
+    color: "from-blue-500 to-cyan-500",
+    demoColor: "from-blue-600 to-cyan-600",
+    demoHover: "from-blue-500 to-cyan-500",
+    shadow: "blue",
+    placeholder: "instructor@example.com",
+    dashboard: "/instructor/dashboard"
+  },
+  admin: {
+    label: "Admin",
+    icon: Shield,
+    color: "from-purple-500 to-pink-500",
+    demoColor: "from-purple-600 to-pink-600",
+    demoHover: "from-purple-500 to-pink-500",
+    shadow: "purple",
+    placeholder: "admin@example.com",
+    dashboard: "/admin/dashboard"
+  }
+};
+
 function Login() {
   const navigate = useNavigate();
   const { login, demoLogin } = useAuth();
 
   const [formData, setFormData] = useState({ 
     email: "", 
-    password: "" 
+    password: "",
+    role: "student" // Default role
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,9 +99,17 @@ function Login() {
     setLoading(true);
 
     try {
-      const response = await authAPI.login(formData);
-      login(response.data.token, response.data.user);
-      navigate("/dashboard");
+      // Send role along with credentials
+      const response = await authAPI.login({
+        ...formData,
+        role: formData.role
+      });
+      
+      // Pass role to login context
+      login(response.data.token, response.data.user, formData.role);
+      
+      // Redirect based on role
+      navigate(ROLES[formData.role].dashboard);
     } catch (err) {
       setError(err.response?.data?.message || "Login failed. Please check your credentials.");
     } finally {
@@ -73,18 +117,15 @@ function Login() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      await demoLogin();
-      navigate("/dashboard");
-    } catch (err) {
-      setError("Demo login failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+  
+
+  const handleRoleChange = (role) => {
+    setFormData({...formData, role});
+    // Clear email placeholder when changing role
+    setFormData(prev => ({...prev, email: "", role}));
   };
+
+  const RoleIcon = ROLES[formData.role].icon;
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0B0F1A] via-[#0f172a] to-[#1e1b4b] overflow-hidden px-4 py-12">
@@ -152,7 +193,7 @@ function Login() {
             Welcome Back
           </h2>
           <p className="text-slate-400 text-lg">
-            Continue your coding journey
+            Continue your learning journey
           </p>
         </motion.div>
 
@@ -165,8 +206,6 @@ function Login() {
           
           <div className="relative bg-[#111827]/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-8 lg:p-10">
             
-        
-
             {/* Error Message */}
             {error && (
               <motion.div
@@ -183,6 +222,36 @@ function Login() {
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Role Selection */}
+              <motion.div variants={item}>
+                <label className="block text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                  <RoleIcon className="w-4 h-4" />
+                  Login As
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {Object.entries(ROLES).map(([roleKey, roleData]) => {
+                    const Icon = roleData.icon;
+                    const isSelected = formData.role === roleKey;
+                    return (
+                      <button
+                        key={roleKey}
+                        type="button"
+                        onClick={() => handleRoleChange(roleKey)}
+                        className={`py-3 px-2 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center gap-2 ${
+                          isSelected 
+                            ? `bg-gradient-to-r ${roleData.color}/20 border-${roleData.color.split('-')[1]}-500 text-${roleData.color.split('-')[1]}-300 shadow-lg` 
+                            : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+                        }`}
+                        disabled={loading}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="text-sm font-medium">{roleData.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+
               {/* Email Input */}
               <motion.div variants={item}>
                 <label className="block text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
@@ -196,7 +265,7 @@ function Login() {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    placeholder="developer@example.com"
+                    placeholder={ROLES[formData.role].placeholder}
                     className="w-full pl-12 pr-4 py-4 rounded-xl bg-white/5 border border-white/10 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-transparent transition-all duration-300"
                     disabled={loading}
                   />
@@ -266,7 +335,7 @@ function Login() {
                 whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 rounded-xl font-semibold text-white bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-indigo-500/25 flex items-center justify-center gap-3 group"
+                className={`w-full py-4 rounded-xl font-semibold text-white bg-gradient-to-r ${ROLES[formData.role].color} hover:${ROLES[formData.role].color.replace('500', '400')} disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:shadow-${ROLES[formData.role].shadow}-500/25 flex items-center justify-center gap-3 group`}
               >
                 {loading ? (
                   <>
@@ -275,8 +344,8 @@ function Login() {
                   </>
                 ) : (
                   <>
-                    <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    <span>Sign In</span>
+                    <RoleIcon className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <span>Sign In as {ROLES[formData.role].label}</span>
                   </>
                 )}
               </motion.button>
@@ -302,6 +371,9 @@ function Login() {
                     →
                   </motion.span>
                 </Link>
+              </p>
+              <p className="text-sm text-slate-500 mt-2">
+                Choose your role during registration
               </p>
             </motion.div>
 

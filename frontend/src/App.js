@@ -50,6 +50,7 @@ function App() {
                 <Route path="/courses/:id" element={<CourseDetails />} />
                 <Route path="/ai-assistant" element={<AIAssistant />} />
                 
+                
                 {/* Protected Routes for All Authenticated Users */}
                 <Route path="/dashboard" element={
                   <ProtectedRoute>

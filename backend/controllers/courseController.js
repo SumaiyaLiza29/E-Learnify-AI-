@@ -38,3 +38,57 @@ exports.getCourseById = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch course" });
   }
 };
+exports.createCourse = async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      price,
+      duration,
+      category,
+      level,
+      tags,
+      requirements,
+      learningObjectives,
+    } = req.body;
+
+    const thumbnailUrl = req.file ? req.file.path : "";
+
+    const course = {
+      title,
+      description,
+      price: Number(price),
+      duration: Number(duration),
+      category,
+      level,
+      tags: JSON.parse(tags), // 🔥 important
+      requirements,
+      learningObjectives,
+      thumbnailUrl,
+      createdAt: new Date(),
+    };
+
+    await getDb().collection("courses").insertOne(course);
+
+    res.status(201).json({ message: "Course created successfully" });
+  } catch (error) {
+    console.error("Create course error:", error);
+    res.status(500).json({ message: "Failed to create course" });
+  }
+};
+
+
+exports.getAllCourses = async (req, res) => {
+  try {
+    const courses = await getDb()
+      .collection("courses")
+      .find({})
+      .toArray();
+
+    res.json(courses);
+  } catch (error) {
+    console.error("Get courses error:", error);
+    res.status(500).json({ message: "Failed to fetch courses" });
+  }
+};
+

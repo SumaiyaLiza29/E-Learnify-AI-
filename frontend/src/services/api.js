@@ -84,4 +84,5 @@ export const getMyCertificates = async (token) => {
   return res.json();
 };
 
+
 export default api;

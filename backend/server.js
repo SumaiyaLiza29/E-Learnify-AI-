@@ -48,7 +48,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/instructor", instructorRoutes);
 app.use("/api/admin", adminRoutes);
-
+app.use("/uploads", express.static("uploads"));
 
 /* =========================
    TEST
